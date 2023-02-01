@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/file.png</file>
+        <file>images/sweep.png</file>
+        <file>images/wrench.png</file>
+        <file>images/clock.png</file>
+        <file>images/chart.png</file>
+        <file>images/close.png</file>
+        <file>images/graph.png</file>
+        <file>images/help.png</file>
+        <file>images/info.png</file>
+    </qresource>
+</RCC>
