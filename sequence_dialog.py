@@ -9,7 +9,6 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-import pyvisa
 
 class seq_Ui_Dialog(object):
     def setupUi(self, Dialog):
@@ -129,14 +128,14 @@ class seq_Ui_Dialog(object):
         self.cancelBtn.setText(_translate("Dialog", "Cancel"))
 
 class seqDialog (QtWidgets.QDialog, seq_Ui_Dialog):
-	def __init__(self):
+	def __init__(self, rm):
 		super(seqDialog, self).__init__()
 		self.setupUi(self)
 		
 		self.varNames.addItems(['T_Value', 'T_Sensor', 'Voltage', 'Current',
 		'Resistivity', 'M_Field', 'V_Hall', 'V_Sample', 'Vxx', 'Vxy', 'R_Sample', 'V_Gate'])
 				
-		self.rm = pyvisa.ResourceManager()
+		self.rm = rm
 		
 		self.addBtn.setEnabled(False)
 		self.upBtn.setEnabled(False)

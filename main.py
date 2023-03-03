@@ -30,6 +30,7 @@ import sequence_dialog
 import graph_dialog
 import visalab_ui
 import pyqtgraph as pg
+import pyvisa
 # import numpy as np
 from time import localtime, strftime, time
 
@@ -44,9 +45,11 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		
 		self.run_timer = QtCore.QTimer()
 		
+		self.rm = pyvisa.ResourceManager()
+		
 		self.td = timing_dialog.timingDialog()
-		self.swdialog = sweep_dialog.sweepDialog()
-		self.seq_dialog = sequence_dialog.seqDialog()
+		self.swdialog = sweep_dialog.sweepDialog(self.rm)
+		self.seq_dialog = sequence_dialog.seqDialog(self.rm)
 		self.gdialog = graph_dialog.graphDialog()
 		self.first_flag = True
 		self.settingsList.setReadOnly(True)
@@ -80,6 +83,12 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.gdialog.g2ycombo.currentTextChanged.connect(self.confGraphsAxes)
 		self.gdialog.g3xcombo.currentTextChanged.connect(self.confGraphsAxes)
 		self.gdialog.g3ycombo.currentTextChanged.connect(self.confGraphsAxes)
+		self.gdialog.g1xscale.textChanged.connect(self.confGraphsAxes)
+		self.gdialog.g1yscale.textChanged.connect(self.confGraphsAxes)
+		self.gdialog.g2xscale.textChanged.connect(self.confGraphsAxes)
+		self.gdialog.g2yscale.textChanged.connect(self.confGraphsAxes)
+		self.gdialog.g3xscale.textChanged.connect(self.confGraphsAxes)
+		self.gdialog.g3yscale.textChanged.connect(self.confGraphsAxes)
 		
 		self.masterButton.clicked.connect(self.onStart)
 		
@@ -282,7 +291,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			try:
 				for i in range(len(self.data)):
 					if not self.data[i]['command'].find('2s_') == -1:
-						inst = self.seq_dialog.rm.open_resource(self.data[i]['instr'])
+						inst = self.rm.open_resource(self.data[i]['instr'])
 						v = inst.query(self.data[i]['command'][3:]).strip('\n\r').split(',')
 						# print(v)
 						self.data[i]['data'].append(float(v[0]))
@@ -294,7 +303,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 					elif not self.data[i]['var'] == 'Time':
 						# print('Reading \"{0}\" from \"{1}\"'.format(d['var'],
 						# d['instr']))
-						inst = self.seq_dialog.rm.open_resource(self.data[i]['instr'])
+						inst = self.rm.open_resource(self.data[i]['instr'])
 						# print(d['command'])
 						v = inst.query(self.data[i]['command'])
 						self.data[i]['data'].append(float(v))
@@ -318,12 +327,34 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		
 	def confGraphsAxes(self):
 		if not self.gdialog.g1xcombo.count() == 0:
-			self.plot1.setLabel('left', self.gdialog.g1ycombo.currentText())
-			self.plot1.setLabel('bottom', self.gdialog.g1xcombo.currentText())
-			self.plot2.setLabel('left', self.gdialog.g2ycombo.currentText())
-			self.plot2.setLabel('bottom', self.gdialog.g2xcombo.currentText())
-			self.plot3.setLabel('left', self.gdialog.g3ycombo.currentText())
-			self.plot3.setLabel('bottom', self.gdialog.g3xcombo.currentText())
+			# setting axis labels
+			label = '{0}, scale: {1}'.format
+			self.plot1.setLabel('left', label(self.gdialog.g1ycombo.currentText(),
+			self.gdialog.g1yscale.value()))
+			self.plot1.setLabel('bottom', label(self.gdialog.g1xcombo.currentText(),
+			self.gdialog.g1xscale.value()))
+			
+			self.plot2.setLabel('left', label(self.gdialog.g2ycombo.currentText(),
+			self.gdialog.g2yscale.value()))
+			self.plot2.setLabel('bottom', label(self.gdialog.g2xcombo.currentText(),
+			self.gdialog.g2xscale.value()))
+			
+			self.plot3.setLabel('left', label(self.gdialog.g3ycombo.currentText(),
+			self.gdialog.g3yscale.value()))
+			self.plot3.setLabel('bottom', label(self.gdialog.g3xcombo.currentText(),
+			self.gdialog.g3xscale.value()))
+			
+			# setting axis scales
+			self.plot1.getAxis('bottom').setScale(self.gdialog.g1xscale.value())
+			self.plot1.getAxis('left').setScale(self.gdialog.g1yscale.value())
+			self.plot2.getAxis('bottom').setScale(self.gdialog.g2xscale.value())
+			self.plot2.getAxis('left').setScale(self.gdialog.g2yscale.value())
+			self.plot3.getAxis('bottom').setScale(self.gdialog.g3xscale.value())
+			self.plot3.getAxis('left').setScale(self.gdialog.g3yscale.value())
+			
+			
+			
+			
 	
 	def initGraphs(self):
 		
@@ -344,17 +375,17 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			
 		
 	def updateGraphs(self):
-		try:
+		# try:
 			# print(len(self.data[self.gdialog.g1xcombo.currentIndex()]['data']))
 			# print(len(self.data[self.gdialog.g1ycombo.currentIndex()]['data']))
-			self.curve1.setData(self.data[self.gdialog.g1xcombo.currentIndex()]['data'],
-			self.data[self.gdialog.g1ycombo.currentIndex()]['data'])
-			self.curve2.setData(self.data[self.gdialog.g2xcombo.currentIndex()]['data'],
-			self.data[self.gdialog.g2ycombo.currentIndex()]['data'])
-			self.curve3.setData(self.data[self.gdialog.g3xcombo.currentIndex()]['data'],
-			self.data[self.gdialog.g3ycombo.currentIndex()]['data'])
-		except Exception:
-			print('Wrong data!')
+		self.curve1.setData(self.data[self.gdialog.g1xcombo.currentIndex()]['data'],
+		self.data[self.gdialog.g1ycombo.currentIndex()]['data'])
+		self.curve2.setData(self.data[self.gdialog.g2xcombo.currentIndex()]['data'],
+		self.data[self.gdialog.g2ycombo.currentIndex()]['data'])
+		self.curve3.setData(self.data[self.gdialog.g3xcombo.currentIndex()]['data'],
+		self.data[self.gdialog.g3ycombo.currentIndex()]['data'])
+		# except Exception:
+			# print('Wrong data!')
 		
 		
 	def onSwTumbler(self, st: bool):

@@ -1,1 +1,1 @@
-GPIB0::16::INSTR@Voltage@:FETCh?
+GPIB1::16::INSTR@Voltage@:FETCh?

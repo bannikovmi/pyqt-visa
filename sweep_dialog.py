@@ -145,14 +145,17 @@ class sweep_Ui_Form(object):
  
 class sweepDialog(QtWidgets.QDialog, sweep_Ui_Form):
 	
-	def __init__(self):
+	def __init__(self, rm):
 		super(sweepDialog, self).__init__()
 		self.setupUi(self)
 		self.setWindowTitle('Sweep settings')
 		
+		self.rm = rm
+		
 		self.okBtn.clicked.connect(self.accept)
 		self.cancelBtn.clicked.connect(self.reject)
 		self.tumbler.stateChanged.connect(self.toggleEnabled)
+		self.scanBtn.clicked.connect(self.onScan)
 	
 	def toggleEnabled(self, state):
 		if state == 2:
@@ -171,3 +174,13 @@ class sweepDialog(QtWidgets.QDialog, sweep_Ui_Form):
 			self.vStart.setEnabled(False)
 			self.vStop.setEnabled(False)
 			self.vCurrent.setEnabled(False)
+	
+	def onScan(self):
+		print('Scan button pressed!')
+		self.devList.clear()
+		try:
+			self.dev_list = self.rm.list_resources()
+			self.devList.addItems(self.dev_list)
+			self.current_instr=self.devList.currentText()
+		except Exception:
+			print('Error reading device list!')
