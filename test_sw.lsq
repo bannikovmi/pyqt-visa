@@ -1,0 +1,2 @@
+GPIB1::16::INSTR@Voltage@:FETCh?
+GPIB0::8::INSTR@V_Gate@AUXV?1

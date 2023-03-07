@@ -60,7 +60,7 @@ class Ui_visaLab(object):
         self.label_2 = QtWidgets.QLabel(self.tab)
         self.label_2.setObjectName("label_2")
         self.verticalLayout_3.addWidget(self.label_2)
-        self.sequenceList = QtWidgets.QListView(self.tab)
+        self.sequenceList = QtWidgets.QTextEdit(self.tab)
         self.sequenceList.setObjectName("sequenceList")
         self.verticalLayout_3.addWidget(self.sequenceList)
         self.horizontalLayout_2.addLayout(self.verticalLayout_3)

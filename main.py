@@ -24,6 +24,7 @@
 #import pyvisa as visa
 import sys  # sys нужен для передачи argv в QApplication
 from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtCore import pyqtSignal, pyqtSlot
 import sweep_dialog
 import timing_dialog
 import sequence_dialog
@@ -39,11 +40,17 @@ from time import localtime, strftime, time
 		# super().__init__()
 		# self.setupUi(self)
 class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
+	
+	primary_finished = pyqtSignal(int)
+	secondary_finished = pyqtSignal(int)
+	
 	def __init__(self):
 		super().__init__()
 		self.setupUi(self)
 		
-		self.run_timer = QtCore.QTimer()
+		self.loop_count = 0
+				
+		# self.run_timer = QtCore.QTimer()
 		
 		self.rm = pyvisa.ResourceManager()
 		
@@ -53,6 +60,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.gdialog = graph_dialog.graphDialog()
 		self.first_flag = True
 		self.settingsList.setReadOnly(True)
+		self.sequenceList.setReadOnly(True)
 		self.swdialog.tumbler.setCheckState(False)
 						
 		self.state = {}
@@ -75,7 +83,9 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.actionChange_File.triggered.connect(self.changeFile)
 		self.actionGraph_settings.triggered.connect(self.graphSettings)
 		self.swdialog.tumbler.stateChanged.connect(self.onSwTumbler)
-		self.run_timer.timeout.connect(self.getData)
+		# self.run_timer.timeout.connect(self.getData)
+		self.primary_finished.connect(self.secondary_timer)
+		self.secondary_finished.connect(self.primary_timer)
 		
 		self.gdialog.g1xcombo.currentTextChanged.connect(self.confGraphsAxes)
 		self.gdialog.g1ycombo.currentTextChanged.connect(self.confGraphsAxes)
@@ -102,6 +112,9 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		
 	def updateSettings(self):
 		self.settingsList.clear()
+		self.sequenceList.clear()
+		if self.state['testMode']:
+			self.settingsList.append("Program is working in test mode!")
 		if self.state['currentFile'] == "No file":
 			self.settingsList.append("No file is selected!")
 		else:
@@ -112,34 +125,24 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		else:
 			self.settingsList.append("Time loop is stopped")
 		if self.state['sequenceisEmpty']:
-			self.settingsList.append("Sequence is empty")
+			self.sequenceList.append("Sequence is empty")
 		else:
-			self.settingsList.append("Sequence:")
 			s = self.seq_dialog.printSequence()
 			for l in s:
-				self.settingsList.append(l)
-		self.settingsList.append("Primary loop delay"
-                                     " is " + self.state['delay1'] + " ms")
+				self.sequenceList.append(l)
+		self.settingsList.append("Primary loop delay is {}ms".format(self.state['delay1']))
+		self.settingsList.append("Secondary loop delay is {}ms".format(self.state['delay2']))
+		self.settingsList.append("Secondary loops: {}".format(self.state['nloops']))
 		if self.state['sweepstate']:
-			self.settingsList.append("Secondary loop delay"
-                                     " is " + self.state['delay2'] + " ms")
-			self.settingsList.append("Number of secondary loops"
-                                     " is " + self.state['nloops'])
 			self.settingsList.append("Sweep is enabled")
-			self.settingsList.append("Sweep: start value "
-                                     "is " + self.state['sweepStart'])
-			self.settingsList.append("Sweep: stop value "
-                                     "is " + self.state['sweepStop'])
-			self.settingsList.append("Sweep: current value "
-                                     "is " + self.state['sweepCurrent'])
+			self.settingsList.append("Sweep: target value "
+                                     "is " + self.state['sweepTarget'])
+			self.settingsList.append("Sweep: current value is {}".format(self.state['sweepCurrent']))
 			self.settingsList.append("Sweep: increment is "
                                      +self.state['sweepIncrement'])
 		else:
 			self.settingsList.append("Sweep is disabled")
 		
-		if self.state['testMode']:
-			self.settingsList.append("Program is working in test mode!")
-
 	def initSettings(self):
 		self.state['delay1'] = self.td.delay1.cleanText()
 		self.state['delay2'] = self.td.delay2.cleanText()
@@ -149,9 +152,8 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.state['isRunning'] = False
 		self.state['sequenceisEmpty'] = True
 		self.state['sweepstate'] = False
-		self.state['sweepStart'] = self.swdialog.vStart.cleanText()
-		self.state['sweepStop'] = self.swdialog.vStop.cleanText()
-		self.state['sweepCurrent'] = self.swdialog.vCurrent.displayText()
+		self.state['sweepTarget'] = self.swdialog.vTarget.cleanText()
+		self.state['sweepCurrent'] = self.swdialog.vCurrent.cleanText()
 		self.state['sweepIncrement'] = self.swdialog.increment.cleanText()
 		self.state['testMode'] = True
 		self.state['nloops'] = self.td.nloops.cleanText()
@@ -242,9 +244,8 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			self.state['sweepstate']=self.swdialog.tumbler.isChecked()
         
 		if self.state['sweepstate']:
-			self.state['sweepStart']=self.swdialog.vStart.cleanText()
-			self.state['sweepStop']=self.swdialog.vStop.cleanText()
-			self.state['sweepCurrent']=self.swdialog.vCurrent.displayText()
+			self.state['sweepTarget']=self.swdialog.vTarget.cleanText()
+			self.state['sweepCurrent']=self.swdialog.vCurrent.cleanText()
 			self.state['sweepIncrement']=self.swdialog.increment.cleanText()
 		
 		self.updateSettings()
@@ -262,10 +263,11 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			self.actionSequence.setEnabled(False)
 			self.actionSweep_settings.setEnabled(False)
 			self.actionTiming.setEnabled(False)
-			self.run_timer.setInterval(self.td.delay1.value())
-			self.run_timer.start()
+			self.primary_timer(self.td.delay1.value())
+			# self.run_timer.setInterval(self.td.delay1.value())
+			# self.run_timer.start()
 		else:
-			self.run_timer.stop()
+			# self.run_timer.stop()
 			self.masterButton.setText("Start")
 			self.state['isRunning'] = False
 			self.updateSettings()
@@ -276,7 +278,54 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			self.actionSweep_settings.setEnabled(True)
 			self.actionTiming.setEnabled(True)
 			
+	@pyqtSlot()		
+	def primary_task(self):
+		if self.state['isRunning']==True:
+			if self.state['sweepstate']:
+				sw = self.swdialog.vCurrent.value()
+				if abs(sw - self.swdialog.vTarget.value())<self.swdialog.increment.value():
+					self.swdialog.vCurrent.setValue(self.swdialog.vTarget.value())
+					self.state['sweepCurrent'] = sw
+					self.updateSettings()
+					
+				else: 
+					if sw < self.swdialog.vTarget.value():
+						self.swdialog.vCurrent.setValue(sw+self.swdialog.increment.value())
+					else:
+						self.swdialog.vCurrent.setValue(sw-self.swdialog.increment.value())
+					self.state['sweepCurrent'] = self.swdialog.vCurrent.value()
+					self.updateSettings()
+					inst = self.rm.open_resource(self.swdialog.current_instr)
+					inst.write('{0} {1}'.format(self.swdialog.command.text(),
+							self.swdialog.vCurrent.value()))
+					# print('Writing to instrument failed!')
+					# self.onStart()
+			print('Primary task finished!')
+			self.loop_count = 0
+			self.primary_finished.emit(self.td.delay2.value())
+		else:
+			print('Loop terminated')
 			
+	
+	@pyqtSlot()
+	def secondary_task(self):
+		if self.loop_count < self.td.nloops.value():
+			self.loop_count += 1
+			self.getData()
+			self.secondary_timer(self.td.delay2.value())
+		else:
+			self.loop_count = 0
+			self.secondary_finished.emit(self.td.delay1.value())
+
+	
+	@pyqtSlot(int)
+	def primary_timer(self, msec):
+		QtCore.QTimer.singleShot(msec, self.primary_task)
+		
+	@pyqtSlot(int)
+	def secondary_timer(self, msec):
+		QtCore.QTimer.singleShot(msec, self.secondary_task)
+	
 	def getData(self):
 		l = ''
 		if self.first_flag and not self.state['sequenceisEmpty']:
