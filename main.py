@@ -3,7 +3,6 @@
 #
 #  main.py
 #  
-#  Copyright 2022 Cryogenic System <Cryogenic System@CRYOGENICSYSTEM>
 #  
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
