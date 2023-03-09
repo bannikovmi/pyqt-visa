@@ -299,7 +299,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 							self.swdialog.vCurrent.value()))
 					# print('Writing to instrument failed!')
 					# self.onStart()
-			print('Primary task finished!')
+			# print('Primary task finished!')
 			self.loop_count = 0
 			self.primary_finished.emit(self.td.delay2.value())
 		else:
