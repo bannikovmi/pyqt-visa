@@ -31,6 +31,8 @@ import graph_dialog
 import visalab_ui
 import pyqtgraph as pg
 import pyvisa
+import threading
+from concurrent.futures import ThreadPoolExecutor
 # import numpy as np
 from time import localtime, strftime, time
 
@@ -81,7 +83,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.actionSweep_settings.triggered.connect(self.configSweep)
 		self.actionChange_File.triggered.connect(self.changeFile)
 		self.actionGraph_settings.triggered.connect(self.graphSettings)
-		self.swdialog.tumbler.stateChanged.connect(self.onSwTumbler)
+		# self.swdialog.tumbler.stateChanged.connect(self.onSwTumbler)
 		# self.run_timer.timeout.connect(self.getData)
 		self.primary_finished.connect(self.secondary_timer)
 		self.secondary_finished.connect(self.primary_timer)
@@ -233,7 +235,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
                           "upon NI-VISA software for communication "
                           "with instruments and upon Qt libraries "
                           "for GUI implementation."
-                          "<p>Created by Valera Prudkoglyad in 2022"
+                          "<p>Created by Valera Prudkoglyad in 2020-2022"
                           "<p>The program is provided AS IS with NO WARRANTY "
                           "OF ANY KIND, INCLUDING THE WARRANTY OF DESIGN, "
                           "MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.")
@@ -325,7 +327,40 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 	def secondary_timer(self, msec):
 		QtCore.QTimer.singleShot(msec, self.secondary_task)
 	
+	def collect_numbers(self, i):
+		try:
+			if not self.data[i]['command'].find('2s_') == -1:
+				inst = self.rm.open_resource(self.data[i]['instr'])
+				v = inst.query(self.data[i]['command'][3:]).strip('\n\r').split(',')
+				self.data[i]['data'].append(float(v[0]))
+				self.data[i+1]['data'].append(float(v[1]))
+			elif not self.data[i]['command'].find('2e_') == -1:
+				pass
+			elif not self.data[i]['var'] == 'Time':
+				inst = self.rm.open_resource(self.data[i]['instr'])
+				v = inst.query(self.data[i]['command']).strip('\n\r')
+				self.data[i]['data'].append(float(v))
+			else:
+				v = time() - self.t_start
+				self.data[i]['data'].append(float(v))		
+		except Exception:
+			if self.attempts<2:
+				print('Instrument communication failed!')
+				self.attempts += 1
+					
+	
 	def getData(self):
+	# Logic behind get data:
+	# self.data is a list of dictionaries
+	# each dictionary contains fields: 'var' - variable (column in datafile) name
+	# 'command' - SCPI (or similar) command to communicate with corresponding
+	# instrument, 'instr' - VISA resource address corresponding to instrument, 'data' - list of variable values,
+	# collected from instrument.
+	# When one calls getData() it iterates through self.data list and makes GPIB queries to
+	# appropriate instuments. 
+		if self.attempts == 2:
+			self.onStart()
+			return
 		l = ''
 		if self.first_flag and not self.state['sequenceisEmpty']:
 			l = 'Time\t'
@@ -336,42 +371,22 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 				f.write(l[:-1]+'\n')
 			self.first_flag = False
 		elif not self.state['sequenceisEmpty']:				
+			with ThreadPoolExecutor(max_workers=len(self.data)) as executor:
+				for i, d in enumerate(self.data):
+					executor.submit(self.collect_numbers, i)
+			l=''
 			try:
-				for i in range(len(self.data)):
-					if not self.data[i]['command'].find('2s_') == -1:
-						inst = self.rm.open_resource(self.data[i]['instr'])
-						v = inst.query(self.data[i]['command'][3:]).strip('\n\r').split(',')
-						# print(v)
-						self.data[i]['data'].append(float(v[0]))
-						self.data[i+1]['data'].append(float(v[1]))
-						l = l+v[0]+'\t'+ v[1]+'\t'
-						
-					elif not self.data[i]['command'].find('2e_') == -1:
-						pass
-					elif not self.data[i]['var'] == 'Time':
-						# print('Reading \"{0}\" from \"{1}\"'.format(d['var'],
-						# d['instr']))
-						inst = self.rm.open_resource(self.data[i]['instr'])
-						# print(d['command'])
-						v = inst.query(self.data[i]['command'])
-						self.data[i]['data'].append(float(v))
-						l = l+v.strip('\n\r')+'\t'
-						# print('OK')
-						
+				for i, d in enumerate(self.data):
+					if not d['var'] == 'Time':
+						l = l + str(d['data'][-1]) + '\t'
 					else:
-						elapsed = time() - self.t_start
-						l = str(elapsed) + '\t' + l + '\n'
-						self.data[i]['data'].append(float(elapsed))
-						# print('Time elapsed: {0}'.format(elapsed))
+						l = str(d['data'][-1]) + '\t' + l
 				with open(self.state['currentFile'], 'a') as f:
-					f.write(l)
+					f.write(l[:-1]+'\n')
 				self.updateGraphs()
-			except Exception:
-				if self.attempts<2:
-					print('Instrument communication failed!')
-					self.attempts += 1
-				else:
-					self.onStart()
+			except IndexError:
+				return
+			
 		
 	def confGraphsAxes(self):
 		if not self.gdialog.g1xcombo.count() == 0:
