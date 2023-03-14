@@ -35,11 +35,21 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 # import numpy as np
 from time import localtime, strftime, time
+import logging
 
 # class TestApp(QtWidgets.QWidget, visalab_dialogs.sweep_Ui_Form):
 	# def __init__(self):
 		# super().__init__()
 		# self.setupUi(self)
+		
+format = "%(asctime)s: %(message)s"
+logging.basicConfig(format=format, 
+	level=logging.INFO, 
+	datefmt="%H:%M:%S")
+# comment next line if debug is not needed	
+# logging.getLogger().setLevel(logging.DEBUG)
+
+
 class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 	
 	primary_finished = pyqtSignal(int)
@@ -161,7 +171,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.updateSettings()
 		
 	def changeFile(self):
-		#print('Change file')
+		logging.debug('Change file')
 		t = strftime('data%d-%m-%y_%H-%M-%S.txt',
 		localtime())
 		self.t_start = time()
@@ -173,7 +183,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			self.updateSettings()
 		
 	def okToContinue(self):
-		#print('okToContinue')
+		logging.debug('okToContinue')
 		r = QtWidgets.QMessageBox.warning(self, "visaLab",
                                "Are you sure want to close application?",
                                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
@@ -184,7 +194,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 	
 	def configSequence(self):
 		if self.seq_dialog.exec():
-			print('Sequence changed!')
+			logging.info('Sequence changed!')
 			self.first_flag = True
 			self.state['currentFile'] = strftime('data%d-%m-%y_%H-%M-%S.txt',
 				localtime())
@@ -192,7 +202,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 				self.state['sequenceisEmpty'] = False
 				self.data = []
 				self.data = self.seq_dialog.makeDataStruct()
-				self.data.append({'instr':'System',
+				self.data.insert(0, {'instr':'System',
 				'var': 'Time', 'command': 'time', 'data': []})
 				self.gdialog.g1xcombo.clear()
 				self.gdialog.g1ycombo.clear()
@@ -201,30 +211,30 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 				self.gdialog.g3xcombo.clear()
 				self.gdialog.g3ycombo.clear()
 				
-				for i in range(len(self.data)):
+				for i, d in enumerate(self.data):
 					self.gdialog.g1xcombo.addItem('[{0}] {1}'.format(
-					i+1, self.data[i]['var']))
+					i+1, d['var']))
 					self.gdialog.g1ycombo.addItem('[{0}] {1}'.format(
-					i+1, self.data[i]['var']))
+					i+1, d['var']))
 					self.gdialog.g2xcombo.addItem('[{0}] {1}'.format(
-					i+1, self.data[i]['var']))
+					i+1, d['var']))
 					self.gdialog.g2ycombo.addItem('[{0}] {1}'.format(
-					i+1, self.data[i]['var']))
+					i+1, d['var']))
 					self.gdialog.g3xcombo.addItem('[{0}] {1}'.format(
-					i+1, self.data[i]['var']))
+					i+1, d['var']))
 					self.gdialog.g3ycombo.addItem('[{0}] {1}'.format(
-					i+1, self.data[i]['var']))
+					i+1, d['var']))
 			self.updateSettings()
 			self.initGraphs()
 			self.confGraphsAxes()
 		else:
-			print('Sequence left unchanged!')
+			logging.info('Sequence left unchanged!')
 		
 	def graphSettings(self):
 		if self.gdialog.exec():
-			print('Graph settings changed!')
+			logging.info('Graph settings changed!')
 		else:
-			print('Graph settings closed!')
+			logging.info('Graph settings closed!')
 	
 	def about(self):
 		_translate = QtCore.QCoreApplication.translate
@@ -296,16 +306,19 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 						self.swdialog.vCurrent.setValue(sw-self.swdialog.increment.value())
 					self.state['sweepCurrent'] = self.swdialog.vCurrent.value()
 					self.updateSettings()
-					inst = self.rm.open_resource(self.swdialog.current_instr)
-					inst.write('{0} {1}'.format(self.swdialog.command.text(),
+					try:
+						inst = self.rm.open_resource(self.swdialog.current_instr)
+						inst.write('{0} {1}'.format(self.swdialog.command.text(),
 							self.swdialog.vCurrent.value()))
+					except Exception:
+						logging.exception('Writing to instrument failed!')
 					# print('Writing to instrument failed!')
 					# self.onStart()
-			# print('Primary task finished!')
+			logging.debug('Primary task finished!')
 			self.loop_count = 0
 			self.primary_finished.emit(self.td.delay2.value())
 		else:
-			print('Loop terminated')
+			logging.info('Loop terminated')
 			
 	
 	@pyqtSlot()
@@ -345,7 +358,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 				self.data[i]['data'].append(float(v))		
 		except Exception:
 			if self.attempts<2:
-				print('Instrument communication failed!')
+				logging.exception('Instrument communication failed!')
 				self.attempts += 1
 					
 	
@@ -363,29 +376,23 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			return
 		l = ''
 		if self.first_flag and not self.state['sequenceisEmpty']:
-			l = 'Time\t'
-			for i in range(len(self.data)-1):
-				l = l + self.data[i]['var']+'\t'
-			
+			l = '\t'.join([x['var'] for x in self.data])			
 			with open(self.state['currentFile'], 'a') as f:
-				f.write(l[:-1]+'\n')
+				f.write(l+'\n')
 			self.first_flag = False
 		elif not self.state['sequenceisEmpty']:				
 			with ThreadPoolExecutor(max_workers=len(self.data)) as executor:
 				for i, d in enumerate(self.data):
 					executor.submit(self.collect_numbers, i)
-			l=''
 			try:
-				for i, d in enumerate(self.data):
-					if not d['var'] == 'Time':
-						l = l + str(d['data'][-1]) + '\t'
-					else:
-						l = str(d['data'][-1]) + '\t' + l
+				l = '\t'.join([str(x['data'][-1]) for x in self.data])
 				with open(self.state['currentFile'], 'a') as f:
-					f.write(l[:-1]+'\n')
+					f.write(l+'\n')
 				self.updateGraphs()
 			except IndexError:
+				logging.exception('Data array is empty!')
 				return
+			
 			
 		
 	def confGraphsAxes(self):

@@ -21,6 +21,7 @@
 #  
 #  
 from PyQt5 import QtCore, QtGui, QtWidgets
+import logging
 
 class sweep_Ui_Form(object):
 	def setupUi(self, Dialog):
@@ -177,14 +178,14 @@ class sweepDialog(QtWidgets.QDialog, sweep_Ui_Form):
 			self.vCurrent.setEnabled(False)
 	
 	def onScan(self):
-		print('Scan button pressed!')
+		logging.debug('Scan button pressed!')
 		self.devList.clear()
 		try:
 			self.dev_list = self.rm.list_resources()
 			self.devList.addItems(self.dev_list)
 			self.current_instr=self.devList.currentText()
 		except Exception:
-			print('Error reading device list!')
+			logging.exception('Error reading device list!')
 			
 	def onChange(self):
 		self.current_instr = self.devList.currentText()

@@ -9,6 +9,7 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
+import logging
 
 class seq_Ui_Dialog(object):
     def setupUi(self, Dialog):
@@ -159,7 +160,7 @@ class seqDialog (QtWidgets.QDialog, seq_Ui_Dialog):
 		
 		
 	def onAdd(self):
-		print('Add button pressed!')
+		logging.debug('Add button pressed!')
 		if self.seqTable.isActiveWindow():
 		#if True:
 			row = self.seqTable.rowCount()
@@ -178,7 +179,7 @@ class seqDialog (QtWidgets.QDialog, seq_Ui_Dialog):
 			self.delBtn.setEnabled(True)
 		
 	def onUp(self):
-		print('Up button pressed!')
+		logging.debug('Up button pressed!')
 		if self.seqTable.rowCount()==0: return
 		row = self.seqTable.currentRow()
 		column = self.seqTable.currentColumn()
@@ -197,7 +198,7 @@ class seqDialog (QtWidgets.QDialog, seq_Ui_Dialog):
 			self.seqTable.setCurrentCell(row-1,column)
 		
 	def onDown(self):
-		print('Down button pressed!')
+		logging.debug('Down button pressed!')
 		if self.seqTable.rowCount()==0: return
 		row = self.seqTable.currentRow()
 		column = self.seqTable.currentColumn()
@@ -216,7 +217,7 @@ class seqDialog (QtWidgets.QDialog, seq_Ui_Dialog):
 			self.seqTable.setCurrentCell(row+1,column)
 
 	def onLoad(self):
-		print('Load button pressed!')
+		logging.info('Load button pressed!')
 		r = 0
 		fileName = QtWidgets.QFileDialog.getOpenFileName(self,
 		"Specify Existing Sequence File",".", "Sequence file(*.lsq)")[0]
@@ -244,7 +245,7 @@ class seqDialog (QtWidgets.QDialog, seq_Ui_Dialog):
 			self.downBtn.setEnabled(True)
 		
 	def onSave(self):
-		print('Save button pressed!')
+		logging.debug('Save button pressed!')
 		line = '{0}@{1}@{2}\n'.format
 		fileName = QtWidgets.QFileDialog.getSaveFileName(self,
 			"Specify Output File Name",".", "Sequence file(*.lsq)")[0]
@@ -258,7 +259,7 @@ class seqDialog (QtWidgets.QDialog, seq_Ui_Dialog):
 				
 				
 	def onDel(self):
-		print('Delete button pressed!')
+		logging.debug('Delete button pressed!')
 		row = self.seqTable.currentRow()
 		self.seqTable.removeRow(row)
 		if self.seqTable.rowCount() == 0:
@@ -267,7 +268,7 @@ class seqDialog (QtWidgets.QDialog, seq_Ui_Dialog):
 			self.delBtn.setEnabled(False)
 		
 	def onScan(self):
-		#print('Scan button pressed!')
+		logging.debug('Scan button pressed!')
 		self.devList.clear()
 		self.addBtn.setEnabled(True) #only for test purposes!
 		try:
@@ -276,7 +277,7 @@ class seqDialog (QtWidgets.QDialog, seq_Ui_Dialog):
 			self.addBtn.setEnabled(True)
 			#self.current_instr=self.devList.currentText()
 		except Exception:
-			print('Error reading device list!')
+			logging.exception('Error reading device list!')
 		
 		
 	def printSequence(self):
@@ -322,9 +323,10 @@ class seqDialog (QtWidgets.QDialog, seq_Ui_Dialog):
 		except Exception:
 			self.idEdit.setText('Instrument unidentified!')
 			id_str = ''
+			logging.exception('Exception occured')
 		lst=[]
 		string = id_str.lower()
-		print(string)
+		logging.info(f'IDN response: {string}')
 		if not string.find("sr830")==-1:
 			lst = ["OUTP?1", "OUTR?1", "SNAP?10,11", "OAUX?1", "AUXV?1", 
 			"PHAS?", "FREQ?", "HARM?", "SLVL?"]
