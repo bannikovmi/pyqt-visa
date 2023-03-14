@@ -434,13 +434,13 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		
 		self.curve1 = self.plot1.plot(pen=self.p1, 
 				symbolBrush=(241,239,26), symbolPen='w', symbol='o', 
-				symbolSize=4)
+				symbolSize=3)
 		self.curve2 = self.plot2.plot(pen=self.p2, 
 				symbolBrush=(241,239,26), symbolPen='w', symbol='o', 
-				symbolSize=4)
+				symbolSize=3)
 		self.curve3 = self.plot3.plot(pen=self.p3, 
 				symbolBrush=(241,239,26), symbolPen='w', symbol='o', 
-				symbolSize=4)
+				symbolSize=3)
 		
 			
 		
