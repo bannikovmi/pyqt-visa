@@ -343,14 +343,23 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 	def collect_numbers(self, i):
 		try:
 			if not self.data[i]['command'].find('2s_') == -1:
-				inst = self.rm.open_resource(self.data[i]['instr'])
+				if self.data[i]['instr'][0]=='r':
+					inst = self.rm.open_resource(self.data[i]['instr'][1:])
+					inst.read_termination='\r'
+				else:
+					inst = self.rm.open_resource(self.data[i]['instr'])					
 				v = inst.query(self.data[i]['command'][3:]).strip('\n\r').split(',')
 				self.data[i]['data'].append(float(v[0]))
 				self.data[i+1]['data'].append(float(v[1]))
 			elif not self.data[i]['command'].find('2e_') == -1:
 				pass
 			elif not self.data[i]['var'] == 'Time':
-				inst = self.rm.open_resource(self.data[i]['instr'])
+				if self.data[i]['instr'][0]=='r':
+					inst = self.rm.open_resource(self.data[i]['instr'][1:])
+					inst.read_termination='\r'
+				else:
+					inst = self.rm.open_resource(self.data[i]['instr'])					
+				#inst = self.rm.open_resource(self.data[i]['instr'])
 				v = inst.query(self.data[i]['command']).strip('\n\r')
 				self.data[i]['data'].append(float(v))
 			else:

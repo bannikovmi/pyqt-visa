@@ -96,6 +96,8 @@ class ExampleApp(QtWidgets.QWidget, test_ui.Ui_Form):
 	def getData(self):
 		try:
 			inst = self.rm.open_resource(self.current_instr)
+			#inst.write_termination = '\r'
+			inst.read_termination = '\r'
 			self.aEdit.setText(inst.query(self.qEdit.text()))
 		except Exception:
 			print('Device communication failed!')
