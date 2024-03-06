@@ -201,6 +201,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			if self.seq_dialog.seqTable.rowCount():
 				self.state['sequenceisEmpty'] = False
 				self.data = []
+				self.t_start = time()
 				self.data = self.seq_dialog.makeDataStruct()
 				self.data.insert(0, {'instr':'System',
 				'var': 'Time', 'command': 'time', 'data': []})
@@ -283,7 +284,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			self.state['isRunning'] = False
 			self.updateSettings()
         #As data acquisition stops,
-        #we bring back configuration possibilities
+        #we bring back configuration options
 			self.actionChange_File.setEnabled(True)
 			self.actionSequence.setEnabled(True)
 			self.actionSweep_settings.setEnabled(True)
@@ -372,14 +373,14 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 					
 	
 	def getData(self):
-	# Logic behind get data:
+	# Logic behind getData:
 	# self.data is a list of dictionaries
 	# each dictionary contains fields: 'var' - variable (column in datafile) name
 	# 'command' - SCPI (or similar) command to communicate with corresponding
 	# instrument, 'instr' - VISA resource address corresponding to instrument, 'data' - list of variable values,
 	# collected from instrument.
 	# When one calls getData() it iterates through self.data list and makes GPIB queries to
-	# appropriate instuments. 
+	# appropriate instruments. 
 		if self.attempts == 2:
 			self.onStart()
 			return
