@@ -179,7 +179,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		save_path = QtWidgets.QFileDialog.getSaveFileName(self, 'Set/Change data file', 
 		t, filter = 'Text files (*.txt, *.dat)')
 		if save_path[0]:
-			self.state['currentFile'] = save_path[0]
+			self.state['currentFile'] = save_path[0][:-1]
 			self.updateSettings()
 		
 	def okToContinue(self):
