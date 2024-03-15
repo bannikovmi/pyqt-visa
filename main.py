@@ -369,6 +369,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		except Exception:
 			if self.attempts<2:
 				logging.exception('Instrument communication failed!')
+				self.data[i]['data'].append(0)		
 				self.attempts += 1
 					
 	
