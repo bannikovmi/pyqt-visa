@@ -43,6 +43,14 @@ class timing_Ui_Dialog(object):
         self.nloops.setMaximum(1000)
         self.nloops.setObjectName("nloops")
         self.verticalLayout.addWidget(self.nloops)
+        self.label4 = QtWidgets.QLabel(Dialog)
+        self.label4.setObjectName("label4")
+        self.verticalLayout.addWidget(self.label4)
+        self.chunk_size = QtWidgets.QSpinBox(Dialog)
+        self.chunk_size.setMinimum(1)
+        self.chunk_size.setMaximum(1000)
+        self.chunk_size.setObjectName("chunk_size")
+        self.verticalLayout.addWidget(self.chunk_size)
         self.verticalLayout_2.addLayout(self.verticalLayout)
         self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
@@ -60,7 +68,8 @@ class timing_Ui_Dialog(object):
         Dialog.setWindowTitle(_translate("Dialog", "Timing settings"))
         self.label1.setText(_translate("Dialog", "Primary delay value (ms)"))
         self.label2.setText(_translate("Dialog", "Secondary delay value (sweep mode only, ms)"))
-        self.label3.setText(_translate("Dialog", "Number of minor loops (sweep mode only"))
+        self.label3.setText(_translate("Dialog", "Number of minor loops (sweep mode only)"))
+        self.label4.setText(_translate("Dialog", "Data chunk size for writing to file"))
         
 class timingDialog(QtWidgets.QDialog, timing_Ui_Dialog):
 	def __init__(self):

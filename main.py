@@ -77,6 +77,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.state = {}
 		self.data =[]
 		self.color_index = 0
+		self.data_count = 0
 		self.initSettings()
 		self.t_start = time()
 		self.p1 = pg.mkPen('#8BFD07', width=1.2)
@@ -119,6 +120,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			self.state['delay1'] = self.td.delay1.cleanText()
 			self.state['delay2'] = self.td.delay2.cleanText()
 			self.state['nloops'] = self.td.nloops.cleanText()
+			self.state['chunk_size'] = self.td.chunk_size.cleanText()
 			self.updateSettings()
 		
 	def updateSettings(self):
@@ -144,6 +146,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.settingsList.append("Primary loop delay is {}ms".format(self.state['delay1']))
 		self.settingsList.append("Secondary loop delay is {}ms".format(self.state['delay2']))
 		self.settingsList.append("Secondary loops: {}".format(self.state['nloops']))
+		self.settingsList.append("Data chunk size: {}".format(self.state['chunk_size']))
 		if self.state['sweepstate']:
 			self.settingsList.append("Sweep is enabled")
 			self.settingsList.append("Sweep: target value "
@@ -168,22 +171,23 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.state['sweepIncrement'] = self.swdialog.increment.cleanText()
 		self.state['testMode'] = True
 		self.state['nloops'] = self.td.nloops.cleanText()
+		self.state['chunk_size'] = self.td.chunk_size.cleanText()
 		self.updateSettings()
 		
 	def changeFile(self):
-		logging.debug('Change file')
+		logging.debug('changeFile: Change file')
 		t = strftime('data%d-%m-%y_%H-%M-%S.txt',
 		localtime())
 		self.t_start = time()
 		self.first_flag = True
 		save_path = QtWidgets.QFileDialog.getSaveFileName(self, 'Set/Change data file', 
-		t, filter = 'Text files (*.txt, *.dat)')
+		t, filter = 'Text files (*.txt *.dat)')
 		if save_path[0]:
-			self.state['currentFile'] = save_path[0][:-1]
+			self.state['currentFile'] = save_path[0]
 			self.updateSettings()
 		
 	def okToContinue(self):
-		logging.debug('okToContinue')
+		logging.debug('okTo Continue: okToContinue')
 		r = QtWidgets.QMessageBox.warning(self, "visaLab",
                                "Are you sure want to close application?",
                                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
@@ -194,7 +198,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 	
 	def configSequence(self):
 		if self.seq_dialog.exec():
-			logging.info('Sequence changed!')
+			logging.info('configSequence: Sequence changed!')
 			self.first_flag = True
 			self.state['currentFile'] = strftime('data%d-%m-%y_%H-%M-%S.txt',
 				localtime())
@@ -229,13 +233,13 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			self.initGraphs()
 			self.confGraphsAxes()
 		else:
-			logging.info('Sequence left unchanged!')
+			logging.info('configSequence: Sequence left unchanged!')
 		
 	def graphSettings(self):
 		if self.gdialog.exec():
-			logging.info('Graph settings changed!')
+			logging.info('graphSettings: Graph settings changed!')
 		else:
-			logging.info('Graph settings closed!')
+			logging.info('graphSettings: Graph settings closed!')
 	
 	def about(self):
 		_translate = QtCore.QCoreApplication.translate
@@ -278,6 +282,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			self.primary_timer(self.td.delay1.value())
 			# self.run_timer.setInterval(self.td.delay1.value())
 			# self.run_timer.start()
+			logging.info('onStart: Sequence started')
 		else:
 			# self.run_timer.stop()
 			self.masterButton.setText("Start")
@@ -289,6 +294,10 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			self.actionSequence.setEnabled(True)
 			self.actionSweep_settings.setEnabled(True)
 			self.actionTiming.setEnabled(True)
+			self.writeToFile(self.data_count)
+			self.data_count = 0
+			
+			logging.info('onStart: Sequence stoped')
 			
 	@pyqtSlot()		
 	def primary_task(self):
@@ -312,14 +321,14 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 						inst.write('{0} {1}'.format(self.swdialog.command.text(),
 							self.swdialog.vCurrent.value()))
 					except Exception:
-						logging.exception('Writing to instrument failed!')
+						logging.exception('primary_task: Writing to instrument failed!')
 					# print('Writing to instrument failed!')
 					# self.onStart()
-			logging.debug('Primary task finished!')
+			logging.debug('primary_task: Primary task finished!')
 			self.loop_count = 0
 			self.primary_finished.emit(self.td.delay2.value())
 		else:
-			logging.info('Loop terminated')
+			logging.info('primary_task: Loop terminated')
 			
 	
 	@pyqtSlot()
@@ -368,10 +377,23 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 				self.data[i]['data'].append(float(v))		
 		except Exception:
 			if self.attempts<2:
-				logging.exception('Instrument communication failed!')
+				logging.exception('collect_numbers: Instrument communication failed!')
 				self.data[i]['data'].append(0)		
 				self.attempts += 1
 					
+	
+	def writeToFile(self, n):
+		l=''
+		try:
+			for i in range(n):
+				l = l + '\t'.join([str(x['data'][-n+i]) for x in self.data]) + '\n'
+			with open(self.state['currentFile'], 'a') as f:
+					f.writelines(l)
+			logging.debug('writeToFile: Wrote data to file!')
+		except IndexError:
+			logging.exception('writeToFile: Data array is empty!')
+		except Exception:
+			logging.exception('writeToFile: Writing to file failed!')
 	
 	def getData(self):
 	# Logic behind getData:
@@ -395,14 +417,20 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			with ThreadPoolExecutor(max_workers=len(self.data)) as executor:
 				for i, d in enumerate(self.data):
 					executor.submit(self.collect_numbers, i)
-			try:
-				l = '\t'.join([str(x['data'][-1]) for x in self.data])
-				with open(self.state['currentFile'], 'a') as f:
-					f.write(l+'\n')
-				self.updateGraphs()
-			except IndexError:
-				logging.exception('Data array is empty!')
-				return
+			#try:
+			#	l = '\t'.join([str(x['data'][-1]) for x in self.data])
+			#	with open(self.state['currentFile'], 'a') as f:
+			#		f.write(l+'\n')
+			if self.data_count > int(self.state['chunk_size']):
+				self.writeToFile(self.data_count)
+				self.data_count = 0
+			else:
+				self.data_count += 1
+				logging.debug(f'getData: data_count={self.data_count}')
+			self.updateGraphs()
+			#except IndexError:
+			#	logging.exception('getData: Data array is empty!')
+		return
 			
 			
 		
