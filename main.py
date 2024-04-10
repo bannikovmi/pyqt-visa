@@ -363,6 +363,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 				self.data[i+1]['data'].append(float(v[1]))
 			elif not self.data[i]['command'].find('2e_') == -1:
 				pass
+			#elif not self.data[i]['var'].find('elec')== 
 			elif not self.data[i]['var'] == 'Time':
 				if self.data[i]['instr'][0]=='r':
 					inst = self.rm.open_resource(self.data[i]['instr'][1:])
