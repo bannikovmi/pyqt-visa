@@ -98,7 +98,7 @@ class Ui_Dialog(object):
         self.setpSpin = QtWidgets.QDoubleSpinBox(self.groupBox)
         self.setpSpin.setObjectName("setpSpin")
         self.setpSpin.setMinimum(0)
-        self.setpSpin.setMinimum(350)
+        self.setpSpin.setMaximum(350)
         self.verticalLayout_3.addWidget(self.setpSpin)
         self.horizontalLayout_2.addLayout(self.verticalLayout_3)
         self.verticalLayout_4 = QtWidgets.QVBoxLayout()

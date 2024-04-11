@@ -53,6 +53,7 @@ class lakecontrolApp(QtWidgets.QDialog, tcontrol_ui.Ui_Dialog):
 		self.setupUi(self)
 		
 		#self.rm = pyvisa.ResourceManager()
+		self.flag = True
 		self.state={}
 		self.current_dev = None
 		self.analogCombo.addItems(['1','2'])
@@ -102,6 +103,7 @@ class lakecontrolApp(QtWidgets.QDialog, tcontrol_ui.Ui_Dialog):
 	
 	def updateState(self):
 		l=''
+		self.flag = True
 		st = self.current_dev.query('AOUT?1').strip()
 		l += 'AnalogOut1: ' + st + '%\n'
 		st = self.current_dev.query('AOUT?2').strip()
@@ -110,7 +112,7 @@ class lakecontrolApp(QtWidgets.QDialog, tcontrol_ui.Ui_Dialog):
 		l += 'Heater output: ' + st + '%\n'
 		self.houtSpin.setValue(float(st))
 		st = self.current_dev.query('RAMP?1').strip()
-		l += f'Ramp state: {st}\n'
+		#l += f'Ramp state: {st}\n'
 		try:
 			ramp_on, ramp_rate = st.split(',')
 			if ramp_on == '1':
@@ -180,10 +182,16 @@ class lakecontrolApp(QtWidgets.QDialog, tcontrol_ui.Ui_Dialog):
 	def rSwitchchange(self, state):
 		logging.info(f'Ramp switch state: {state}!')
 		if state == 2 and not self.current_dev == None:
-			self.current_dev.write(f'RAMP 1, 1, {self.rampSpin.value()}')
+			if not self.flag == True:
+				self.current_dev.write(f'RAMP 1, 1, {self.rampSpin.value()}')
+			else:
+				self.flag = False
 			self.messageBox.append('Ramp on')
 		elif state == 0 and not self.current_dev == None:
-			self.current_dev.write(f'RAMP 1, 0')
+			if not self.flag == True:
+				self.current_dev.write(f'RAMP 1, 0')
+			else:
+				self.flag = False
 			self.messageBox.append('Ramp off')
 			
 	
