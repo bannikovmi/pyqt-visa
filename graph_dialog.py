@@ -133,7 +133,7 @@ class graph_Ui_Dialog(object):
 
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
-        Dialog.setWindowTitle(_translate("Dialog", "Dialog"))
+        Dialog.setWindowTitle(_translate("Dialog", "Graphs settings"))
         self.groupBox.setTitle(_translate("Dialog", "Graph #1 settings"))
         self.label_3.setText(_translate("Dialog", "X-variable"))
         self.label.setText(_translate("Dialog", "X-scale"))
