@@ -28,6 +28,7 @@ import sweep_dialog
 import timing_dialog
 import sequence_dialog
 import graph_dialog
+import lakecontrol_dialog
 import visalab_ui
 import pyqtgraph as pg
 import pyvisa
@@ -69,6 +70,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.swdialog = sweep_dialog.sweepDialog(self.rm)
 		self.seq_dialog = sequence_dialog.seqDialog(self.rm)
 		self.gdialog = graph_dialog.graphDialog()
+		self.tc_dialog = lakecontrol_dialog.lakecontrolApp(self.rm)
 		self.first_flag = True
 		self.settingsList.setReadOnly(True)
 		self.sequenceList.setReadOnly(True)
@@ -94,6 +96,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.actionSweep_settings.triggered.connect(self.configSweep)
 		self.actionChange_File.triggered.connect(self.changeFile)
 		self.actionGraph_settings.triggered.connect(self.graphSettings)
+		self.actionTControl.triggered.connect(self.controlLakeshore)
 		# self.swdialog.tumbler.stateChanged.connect(self.onSwTumbler)
 		# self.run_timer.timeout.connect(self.getData)
 		self.primary_finished.connect(self.secondary_timer)
@@ -241,6 +244,12 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		else:
 			logging.info('graphSettings: Graph settings closed!')
 	
+	def controlLakeshore(self):
+		if self.tc_dialog.exec():
+			logging.info('controlLakeshore: Lakeshore settings changed!')
+		else:
+			logging.info('controlLakeshore: Lakeshore settings closed!')
+	
 	def about(self):
 		_translate = QtCore.QCoreApplication.translate
 		QtWidgets.QMessageBox.about(self, "About visaLab",
@@ -279,6 +288,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			self.actionSequence.setEnabled(False)
 			self.actionSweep_settings.setEnabled(False)
 			self.actionTiming.setEnabled(False)
+			self.actionTControl.setEnabled(True)
 			self.primary_timer(self.td.delay1.value())
 			# self.run_timer.setInterval(self.td.delay1.value())
 			# self.run_timer.start()
@@ -294,6 +304,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			self.actionSequence.setEnabled(True)
 			self.actionSweep_settings.setEnabled(True)
 			self.actionTiming.setEnabled(True)
+			self.actionTControl.setEnabled(True)
 			self.writeToFile(self.data_count)
 			self.data_count = 0
 			
