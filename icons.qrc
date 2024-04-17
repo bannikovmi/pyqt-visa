@@ -9,5 +9,7 @@
         <file>images/graph.png</file>
         <file>images/help.png</file>
         <file>images/info.png</file>
+        <file>images/thermometer.png</file>
+        <file>images/magnet.png</file>
     </qresource>
 </RCC>
