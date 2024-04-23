@@ -288,7 +288,8 @@ class lakecontrolApp(QtWidgets.QDialog, tc_ui_Form):
 		self.setupUi(self)
 		
 		#self.rm = pyvisa.ResourceManager()
-		self.flag = True
+		self.rflag = True
+		self.pflag = True
 		self.state={}
 		self.rm = rm
 		self.current_dev = None
@@ -334,13 +335,16 @@ class lakecontrolApp(QtWidgets.QDialog, tc_ui_Form):
 	
 	def onChange(self):
 		self.current_dev = self.rm.open_resource(self.instrList.currentText())
-		logging.info(f'onChange: current device is {self.instrList.currentText()}\n')
+		logging.info(f'onChange: current device is {self.instrList.currentText()}')
 		self.updateState()
 	
 	def updateState(self):
 		l=''
-		self.flag = True
+		self.rflag = True
+		self.pflag = True
 		st = self.current_dev.query('AOUT?1').strip()
+		self.analogSpin.setValue(float(st))
+		self.analogCombo.setCurrentIndex(0)	
 		l += 'AnalogOut1: ' + st + '%\n'
 		st = self.current_dev.query('AOUT?2').strip()
 		l += 'AnalogOut2: ' + st + '%\n'
@@ -402,6 +406,8 @@ class lakecontrolApp(QtWidgets.QDialog, tc_ui_Form):
 			self.prunBtn.setEnabled(False)
 			self.ptermBtn.setEnabled(True)
 		self.ConfigBox.setText(l)
+		self.rflag = False
+		self.pflag = False
 				
 	
 	def onAUpd(self):
@@ -419,27 +425,33 @@ class lakecontrolApp(QtWidgets.QDialog, tc_ui_Form):
 	def rSwitchchange(self, state):
 		logging.info(f'Ramp switch state: {state}!')
 		if state == 2 and not self.current_dev == None:
-			if not self.flag == True:
+			if not self.rflag == True:
 				self.current_dev.write(f'RAMP 1, 1, {self.rampSpin.value()}')
+				self.messageBox.append('Ramp on')
 			else:
-				self.flag = False
-			self.messageBox.append('Ramp on')
+				self.rflag = False
 		elif state == 0 and not self.current_dev == None:
-			if not self.flag == True:
+			if not self.rflag == True:
 				self.current_dev.write(f'RAMP 1, 0')
+				self.messageBox.append('Ramp off')
 			else:
-				self.flag = False
-			self.messageBox.append('Ramp off')
+				self.rflag = False
 			
 	
 	def pSwitchchange(self, state):
 		logging.debug(f'Power switch state: {state}!')
 		if state == 2 and not self.current_dev == None:
-			self.current_dev.write(f'CSET 1,,,,1')
-			self.messageBox.append('Loop1 powerup on')
+			if not self.pflag == True:
+				self.current_dev.write(f'CSET 1,,,,1')
+				self.messageBox.append('Loop1 powerup on')
+			else:
+				self.pflag = False
 		elif state == 0 and not self.current_dev == None:
-			self.current_dev.write(f'CSET 1,,,,0')
-			self.messageBox.append('Loop1 powerup off')
+			if not self.pflag == True:
+				self.current_dev.write(f'CSET 1,,,,0')
+				self.messageBox.append('Loop1 powerup off')
+			else: 
+				self.pflag = False
 	
 	def onGet(self):
 		logging.debug('onGet: Get clicked!')
@@ -490,7 +502,7 @@ class lakecontrolApp(QtWidgets.QDialog, tc_ui_Form):
 		if len(self.instrList)>0:
 			self.current_dev = self.rm.open_resource(self.instrList.currentText())
 			self.updateState()
-			logging.info(f'onScan: current device is {self.instrList.currentText()}\n')
+			logging.info(f'onScan: current device is {self.instrList.currentText()}')
 			#self.prunBtn.setEnabled(True)
 			#self.ptermBtn.setEnabled(True)
 			self.hoffBtn.setEnabled(True)

@@ -116,6 +116,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.gdialog.g3yscale.textChanged.connect(self.confGraphsAxes)
 		
 		self.masterButton.clicked.connect(self.onStart)
+		self.masterButton.setStyleSheet('color: blue; font: bold 16px;')
 		
 		
 	def configTiming(self):
@@ -278,6 +279,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 	def onStart(self):
 		if not self.state['isRunning']:
 			self.masterButton.setText("Stop")
+			self.masterButton.setStyleSheet('color: red; font: bold 16px;')
 			self.state['isRunning'] = True
 			self.attempts = 0
 			self.updateSettings()
@@ -296,6 +298,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		else:
 			# self.run_timer.stop()
 			self.masterButton.setText("Start")
+			self.masterButton.setStyleSheet('color: blue; font: bold 16px;')
 			self.state['isRunning'] = False
 			self.updateSettings()
         #As data acquisition stops,
