@@ -181,6 +181,9 @@ class tc_ui_Form(object):
         self.powerSwitch = QtWidgets.QCheckBox(self.groupBox_2)
         self.powerSwitch.setObjectName("powerSwitch")
         self.gridLayout_4.addWidget(self.powerSwitch, 8, 0, 1, 1)
+        self.loopSwitch = QtWidgets.QCheckBox(self.groupBox_2)
+        self.loopSwitch.setObjectName("loopSwitch")
+        self.gridLayout_4.addWidget(self.loopSwitch, 9, 0, 1, 1)###
         self.hoffBtn = QtWidgets.QPushButton(self.groupBox_2)
         self.hoffBtn.setObjectName("hoffBtn")
         self.gridLayout_4.addWidget(self.hoffBtn, 0, 1, 1, 1)
@@ -269,6 +272,7 @@ class tc_ui_Form(object):
         self.analogUpd.setText(_translate("Dialog", "Update AnalogOutput"))
         self.label_9.setText(_translate("Dialog", "Analog Channel"))
         self.powerSwitch.setText(_translate("Dialog", "Powerup Enable"))
+        self.loopSwitch.setText(_translate("Dialog", "Loop Enable"))
         self.hoffBtn.setText(_translate("Dialog", "Heater off"))
         self.label_6.setText(_translate("Dialog", "Heater resistance"))
         self.setResBtn.setText(_translate("Dialog", "Set heater resistance"))
@@ -288,8 +292,7 @@ class lakecontrolApp(QtWidgets.QDialog, tc_ui_Form):
 		self.setupUi(self)
 		
 		#self.rm = pyvisa.ResourceManager()
-		self.rflag = True
-		self.pflag = True
+		self.flag = True
 		self.state={}
 		self.rm = rm
 		self.current_dev = None
@@ -312,6 +315,7 @@ class lakecontrolApp(QtWidgets.QDialog, tc_ui_Form):
 		self.scanButton.clicked.connect(self.onScan)
 		self.rampSwitch.stateChanged.connect(self.rSwitchchange)
 		self.powerSwitch.stateChanged.connect(self.pSwitchchange)
+		self.loopSwitch.stateChanged.connect(self.leSwitchchange)
 		self.setResBtn.clicked.connect(self.onSetRes)
 		self.exitButton.clicked.connect(self.close)
 		self.analogUpd.clicked.connect(self.onAUpd)
@@ -335,13 +339,12 @@ class lakecontrolApp(QtWidgets.QDialog, tc_ui_Form):
 	
 	def onChange(self):
 		self.current_dev = self.rm.open_resource(self.instrList.currentText())
-		logging.info(f'onChange: current device is {self.instrList.currentText()}')
+		logging.info(f'[onChange] Current device is {self.instrList.currentText()}')
 		self.updateState()
 	
 	def updateState(self):
 		l=''
-		self.rflag = True
-		self.pflag = True
+		self.flag = True
 		st = self.current_dev.query('AOUT?1').strip()
 		self.analogSpin.setValue(float(st))
 		self.analogCombo.setCurrentIndex(0)	
@@ -364,7 +367,7 @@ class lakecontrolApp(QtWidgets.QDialog, tc_ui_Form):
 			l += 'Ramp settings: ' + f'Ramp {ramp}, Ramp rate={ramp_rate}K/min' + '\n'
 			self.rampSpin.setValue(float(ramp_rate))
 		except Exception:
-			logging.info('updateSettings: Unable to unpack ramp setings')
+			logging.info('[updateState] Unable to unpack ramp setings')
 		
 		st = self.current_dev.query('RAMPST?1').strip()
 		if st == '0':
@@ -394,9 +397,13 @@ class lakecontrolApp(QtWidgets.QDialog, tc_ui_Form):
 			self.powerSwitch.setChecked(True)
 		elif loop_list[-1] == '0': 
 			self.powerSwitch.setChecked(False)
+		if loop_list[-2] == '1':
+			self.loopSwitch.setChecked(True)
+		elif loop_list[-2] == '0': 
+			self.powerSwitch.setChecked(False)
 		l += 'Loop1 settings: ' + st + '\n'
 		st = self.current_dev.query('PGMRUN?').strip()
-		logging.debug(f'Lakecontrol: program state = {st}')
+		logging.debug(f'[updateState] Lakecontrol: program state = {st}')
 		program, status = st.split(',')
 		if program == '00':
 			self.prunBtn.setEnabled(True)
@@ -406,79 +413,77 @@ class lakecontrolApp(QtWidgets.QDialog, tc_ui_Form):
 			self.prunBtn.setEnabled(False)
 			self.ptermBtn.setEnabled(True)
 		self.ConfigBox.setText(l)
-		self.rflag = False
-		self.pflag = False
+		self.flag = False
 				
 	
 	def onAUpd(self):
-		logging.debug('onAUpd: Update AnalogOut clicked!')
+		logging.debug('[onAUpd] Update AnalogOut clicked!')
 		if not self.current_dev == None:
 			self.current_dev.write(f'ANALOG {self.analogCombo.currentText()},0,2,,,,,{self.analogSpin.value()}')
 			self.messageBox.append(f'Analog out {self.analogCombo.currentText()} is set to {self.analogSpin.value()}')
 	
 	
 	def onSetRes(self):
-		logging.debug('onSetRes: Set resistivity clicked!')
+		logging.debug('[onSetRes] Set resistivity clicked!')
 		self.messageBox.append('Set resistivity clicked!')
 		self.messageBox.append(f'Heater resistance is set to {self.hResSpin.value()}')
 	
 	def rSwitchchange(self, state):
-		logging.info(f'Ramp switch state: {state}!')
-		if state == 2 and not self.current_dev == None:
-			if not self.rflag == True:
+		logging.info(f'[rSwitchchange] Ramp switch state: {state}!')
+		if not self.flag == True:
+			if state == 2 and not self.current_dev == None:
 				self.current_dev.write(f'RAMP 1, 1, {self.rampSpin.value()}')
 				self.messageBox.append('Ramp on')
-			else:
-				self.rflag = False
-		elif state == 0 and not self.current_dev == None:
-			if not self.rflag == True:
+			elif state == 0 and not self.current_dev == None:
 				self.current_dev.write(f'RAMP 1, 0')
 				self.messageBox.append('Ramp off')
-			else:
-				self.rflag = False
-			
 	
 	def pSwitchchange(self, state):
-		logging.debug(f'Power switch state: {state}!')
-		if state == 2 and not self.current_dev == None:
-			if not self.pflag == True:
+		logging.debug(f'[pSwitchchange] Power switch state: {state}')
+		if not self.flag == True:
+			if state == 2 and not self.current_dev == None:
 				self.current_dev.write(f'CSET 1,,,,1')
 				self.messageBox.append('Loop1 powerup on')
-			else:
-				self.pflag = False
-		elif state == 0 and not self.current_dev == None:
-			if not self.pflag == True:
+			elif state == 0 and not self.current_dev == None:
 				self.current_dev.write(f'CSET 1,,,,0')
 				self.messageBox.append('Loop1 powerup off')
-			else: 
-				self.pflag = False
+	
+	def leSwitchchange(self, state):
+		logging.info(f'[leSwitchchange] Loop enabled state: {state}')
+		if not self.flag == True:
+			if state == 2 and not self.current_dev == None:
+				self.current_dev.write(f'CSET 1,,,1')
+				self.messageBox.append('Loop1 enabled')
+			elif state == 0 and not self.current_dev == None:
+				self.current_dev.write(f'CSET 1,,,0')
+				self.messageBox.append('Loop1 disabled')
 	
 	def onGet(self):
-		logging.debug('onGet: Get clicked!')
+		logging.debug('[onGet] Get clicked!')
 		if not self.current_dev == None:
 			self.updateState()
 	
 	def onSetp(self):
-		logging.debug('onSetp: Update setpoint clicked!')
+		logging.debug('[onSetp] Update setpoint clicked!')
 		if not self.current_dev == None:
 			self.current_dev.write(f'SETP 1,{self.setpSpin.value()}')
 			self.messageBox.append(f'Setpoint is set to {self.setpSpin.value()}K')
 		
 	def onRamp(self):
-		logging.debug('onRamp: Update ramp clicked!')
+		logging.debug('[onRamp] Update ramp clicked!')
 		if not self.current_dev == None:
 			self.current_dev.write(f'RAMP 1,1,{self.rampSpin.value()}')
 			self.messageBox.append(f'Ramp is set to {self.rampSpin.value()}K/min')
 		
 	def onHupd(self):
-		logging.info('onHupd: Update heater clicked!')
+		logging.info('[onHupd] Update heater clicked!')
 		if not self.current_dev == None:
 			self.current_dev.write(f'RANGE {self.hrangeCombo.currentText()}')
 			self.messageBox.append(f'Heater range changed to {self.hrangeCombo.currentText()}')
 			self.hoffBtn.setEnabled(True)
 		
 	def onHoff(self):
-		logging.info('Heater off clicked!')
+		logging.info('[onHoff] Heater off clicked!')
 		if not self.current_dev == None:
 			self.current_dev.write('RANGE 0')
 			self.hoffBtn.setEnabled(False)
@@ -496,16 +501,16 @@ class lakecontrolApp(QtWidgets.QDialog, tc_ui_Form):
 					id_str = inst.query("*IDN?")
 					if not id_str.find('MODEL340')==-1:
 						self.instrList.addItem(dev)
-						logging.info('onScan: LS340 found!')
+						logging.info('[onScan] LS340 found!')
 				except Exception:
-					logging.exception(f'OnScan: Error communicating with device {dev}!')
+					logging.exception(f'[OnScan] Error communicating with device {dev}!')
 		if len(self.instrList)>0:
 			self.current_dev = self.rm.open_resource(self.instrList.currentText())
 			self.updateState()
-			logging.info(f'onScan: current device is {self.instrList.currentText()}')
+			logging.info(f'[onScan] Current device is {self.instrList.currentText()}')
 			#self.prunBtn.setEnabled(True)
 			#self.ptermBtn.setEnabled(True)
 			self.hoffBtn.setEnabled(True)
 			self.rampSwitch.setEnabled(True)
 		else:
-			logging.info(f'Lakeshore340 devices on GPIB bus not found')
+			logging.info(f'[onScan] Lakeshore340 devices on GPIB bus not found')
