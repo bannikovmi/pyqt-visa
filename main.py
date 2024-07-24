@@ -28,6 +28,7 @@ import sweep_dialog
 import timing_dialog
 import sequence_dialog
 import graph_dialog
+import lakecontrol_dialog
 import visalab_ui
 import pyqtgraph as pg
 import pyvisa
@@ -69,6 +70,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.swdialog = sweep_dialog.sweepDialog(self.rm)
 		self.seq_dialog = sequence_dialog.seqDialog(self.rm)
 		self.gdialog = graph_dialog.graphDialog()
+		self.tc_dialog = lakecontrol_dialog.lakecontrolApp(self.rm)
 		self.first_flag = True
 		self.settingsList.setReadOnly(True)
 		self.sequenceList.setReadOnly(True)
@@ -94,6 +96,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.actionSweep_settings.triggered.connect(self.configSweep)
 		self.actionChange_File.triggered.connect(self.changeFile)
 		self.actionGraph_settings.triggered.connect(self.graphSettings)
+		self.actionTControl.triggered.connect(self.controlLakeshore)
 		# self.swdialog.tumbler.stateChanged.connect(self.onSwTumbler)
 		# self.run_timer.timeout.connect(self.getData)
 		self.primary_finished.connect(self.secondary_timer)
@@ -113,6 +116,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.gdialog.g3yscale.textChanged.connect(self.confGraphsAxes)
 		
 		self.masterButton.clicked.connect(self.onStart)
+		self.masterButton.setStyleSheet('color: blue; font: bold 16px;')
 		
 		
 	def configTiming(self):
@@ -175,7 +179,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 		self.updateSettings()
 		
 	def changeFile(self):
-		logging.debug('changeFile: Change file')
+		logging.debug('[changeFile] Change file')
 		t = strftime('data%d-%m-%y_%H-%M-%S.txt',
 		localtime())
 		self.t_start = time()
@@ -187,7 +191,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			self.updateSettings()
 		
 	def okToContinue(self):
-		logging.debug('okTo Continue: okToContinue')
+		logging.debug('[okToContinue] okToContinue')
 		r = QtWidgets.QMessageBox.warning(self, "visaLab",
                                "Are you sure want to close application?",
                                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
@@ -198,7 +202,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 	
 	def configSequence(self):
 		if self.seq_dialog.exec():
-			logging.info('configSequence: Sequence changed!')
+			logging.info('[configSequence] Sequence changed!')
 			self.first_flag = True
 			self.state['currentFile'] = strftime('data%d-%m-%y_%H-%M-%S.txt',
 				localtime())
@@ -233,13 +237,19 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			self.initGraphs()
 			self.confGraphsAxes()
 		else:
-			logging.info('configSequence: Sequence left unchanged!')
+			logging.info('[configSequence] Sequence left unchanged!')
 		
 	def graphSettings(self):
 		if self.gdialog.exec():
-			logging.info('graphSettings: Graph settings changed!')
+			logging.info('[graphSettings] Graph settings changed!')
 		else:
-			logging.info('graphSettings: Graph settings closed!')
+			logging.info('[graphSettings] Graph settings closed!')
+	
+	def controlLakeshore(self):
+		if self.tc_dialog.exec():
+			logging.info('[controlLakeshore] Lakeshore settings changed!')
+		else:
+			logging.info('[controlLakeshore] Lakeshore settings closed!')
 	
 	def about(self):
 		_translate = QtCore.QCoreApplication.translate
@@ -269,6 +279,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 	def onStart(self):
 		if not self.state['isRunning']:
 			self.masterButton.setText("Stop")
+			self.masterButton.setStyleSheet('color: red; font: bold 16px;')
 			self.state['isRunning'] = True
 			self.attempts = 0
 			self.updateSettings()
@@ -279,13 +290,15 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			self.actionSequence.setEnabled(False)
 			self.actionSweep_settings.setEnabled(False)
 			self.actionTiming.setEnabled(False)
+			self.actionTControl.setEnabled(True)
 			self.primary_timer(self.td.delay1.value())
 			# self.run_timer.setInterval(self.td.delay1.value())
 			# self.run_timer.start()
-			logging.info('onStart: Sequence started')
+			logging.info('[onStart] Sequence started')
 		else:
 			# self.run_timer.stop()
 			self.masterButton.setText("Start")
+			self.masterButton.setStyleSheet('color: blue; font: bold 16px;')
 			self.state['isRunning'] = False
 			self.updateSettings()
         #As data acquisition stops,
@@ -294,10 +307,11 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 			self.actionSequence.setEnabled(True)
 			self.actionSweep_settings.setEnabled(True)
 			self.actionTiming.setEnabled(True)
+			self.actionTControl.setEnabled(True)
 			self.writeToFile(self.data_count)
 			self.data_count = 0
 			
-			logging.info('onStart: Sequence stoped')
+			logging.info('[onStart] Sequence stoped')
 			
 	@pyqtSlot()		
 	def primary_task(self):
@@ -324,11 +338,11 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 						logging.exception('primary_task: Writing to instrument failed!')
 					# print('Writing to instrument failed!')
 					# self.onStart()
-			logging.debug('primary_task: Primary task finished!')
+			logging.debug('[primary_task] Primary task finished!')
 			self.loop_count = 0
 			self.primary_finished.emit(self.td.delay2.value())
 		else:
-			logging.info('primary_task: Loop terminated')
+			logging.info('[primary_task] Loop terminated')
 			
 	
 	@pyqtSlot()
@@ -377,8 +391,8 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 				v = time() - self.t_start
 				self.data[i]['data'].append(float(v))		
 		except Exception:
-			if self.attempts<2:
-				logging.exception('collect_numbers: Instrument communication failed!')
+			if self.attempts<3:
+				logging.exception('[collect_numbers] Instrument communication failed!')
 				self.data[i]['data'].append(0)		
 				self.attempts += 1
 					
@@ -390,11 +404,11 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 				l = l + '\t'.join([str(x['data'][-n+i]) for x in self.data]) + '\n'
 			with open(self.state['currentFile'], 'a') as f:
 					f.writelines(l)
-			logging.debug('writeToFile: Wrote data to file!')
+			logging.debug('[writeToFile] Wrote data to file!')
 		except IndexError:
-			logging.exception('writeToFile: Data array is empty!')
+			logging.exception('[writeToFile] Data array is empty!')
 		except Exception:
-			logging.exception('writeToFile: Writing to file failed!')
+			logging.exception('[writeToFile] Writing to file failed!')
 	
 	def getData(self):
 	# Logic behind getData:
@@ -427,7 +441,7 @@ class visaLabApp(QtWidgets.QMainWindow, visalab_ui.Ui_visaLab):
 				self.data_count = 0
 			else:
 				self.data_count += 1
-				logging.debug(f'getData: data_count={self.data_count}')
+				logging.debug(f'[getData] data_count={self.data_count}')
 			self.updateGraphs()
 			#except IndexError:
 			#	logging.exception('getData: Data array is empty!')
